@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1200" />
+  <title>بحث في المنتجات — GitHub Pages</title>
+
+  <!-- مكتبات -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
+  <style>
+    :root {
+      --card-bg: #ffffff;
+      --muted: #6c757d;
+      --primary: #0d6efd;
+      --success: #28a745;
+      --danger: #dc3545;
+      --accent: #20c997;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f7fb;
+      color: #222;
+      margin: 0;
+      padding: 18px;
+      box-sizing: border-box;
+      direction: rtl;
+    }
+
+    h2 {
+      text-align: center;
+      margin: 6px 0 12px;
+    }
+
+    /* status */
+    #status {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      color: #fff;
+      font-weight: 700;
+      z-index: 80;
+      background: var(--muted);
+      cursor: pointer;
+    }
+
+    /* messages panel (in-page replacements for alert/prompt/confirm) */
+    #messagesPanel {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+      z-index: 1200;
+      pointer-events: none;
+    }
+
+    .toast {
+      pointer-events: auto;
+      min-width: 280px;
+      max-width: 920px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 6px 22px rgba(0, 0, 0, 0.08);
+      padding: 10px 12px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      border-left: 6px solid var(--muted);
+    }
+
+    .toast .msg {
+      flex: 1;
+      text-align: right;
+    }
+
+    .toast.info {
+      border-left-color: #17a2b8;
+    }
+
+    .toast.success {
+      border-left-color: var(--success);
+    }
+
+    .toast.error {
+      border-left-color: var(--danger);
+    }
+
+    .toast .closeBtn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    /* persistent notice when there are selected products */
+    #persistentNotice {
+      display: none;
+      position: fixed;
+      bottom: 14px;
+      right: 14px;
+      left: 14px;
+      z-index: 1100;
+    }
+
+    #persistentNotice .notice {
+      background: #fff3cd;
+      color: #664d03;
+      padding: 10px 12px;
+      border-radius: 8px;
+      box-shadow: 0 6px 22px rgba(0, 0, 0, 0.06);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* generic dialog modal (replaces prompt/confirm) */
+    .dialog-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 1250;
+    }
+
+    .dialog {
+      background: #fff;
+      border-radius: 10px;
+      padding: 14px;
+      width: 420px;
+      max-width: 95%;
+      box-sizing: border-box;
+    }
+
+    .dialog h4 {
+      margin: 0 0 8px;
+      text-align: center;
+    }
+
+    .dialog .dialog-msg {
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    .dialog .dialog-input {
+      width: 100%;
+      padding: 10px;
+      font-size: 18px;
+      text-align: center;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+
+    .dialog .dialog-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 12px
+    }
+
+    .dialog .btn {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    .dialog .btn.primary {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .dialog .btn.ghost {
+      background: #e9ecef;
+    }
+
+    /* layout */
+    #app {
+      margin-top: 36px;
+    }
+
+    .searchRow {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    #searchBar {
+      width: 60%;
+      max-width: 520px;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      box-sizing: border-box;
+      display: inline-block;
+    }
+
+    .btn {
+      padding: 10px 14px;
+      margin: 0 6px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    .btn.primary {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn.ghost {
+      background: #e9ecef;
+    }
+
+    .btn.camera {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn.warn {
+      background: #ffc107;
+      color: #111;
+    }
+
+    .btn.danger {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    #reader {
+      width: 320px;
+      margin: 10px auto;
+      display: none;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #reader video,
+    #reader canvas {
+      width: 320px !important;
+      height: auto !important;
+      object-fit: cover;
+      display: block;
+    }
+
+    .tables {
+      display: flex;
+      gap: 18px;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .col {
+      width: 48%;
+      background: var(--card-bg);
+      padding: 12px;
+      border-radius: 8px;
+      box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+      box-sizing: border-box;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: auto;
+      word-wrap: break-word;
+    }
+
+    thead th {
+      background: #f2f2f2;
+      padding: 8px;
+      border: 1px solid #ddd;
+      font-weight: 600;
+    }
+
+    tbody td {
+      padding: 8px;
+      border: 1px solid #ddd;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    /* results table widths */
+    #results th:nth-child(1),
+    #results td:nth-child(1) {
+      width: 45%;
+    }
+
+    #results th:nth-child(2),
+    #results td:nth-child(2) {
+      width: 15%;
+    }
+
+    #results th:nth-child(3),
+    #results td:nth-child(3) {
+      width: 15%;
+    }
+
+    #results th:nth-child(4),
+    #results td:nth-child(4) {
+      width: 15%;
+    }
+
+    #results th:nth-child(5),
+    #results td:nth-child(5) {
+      width: 10%;
+    }
+
+    /* final table widths (7 columns) */
+    #finalResults th:nth-child(1),
+    #finalResults td:nth-child(1) {
+      width: 30%;
+    }
+
+    #finalResults th:nth-child(2),
+    #finalResults td:nth-child(2) {
+      width: 10%;
+    }
+
+    #finalResults th:nth-child(3),
+    #finalResults td:nth-child(3) {
+      width: 12%;
+    }
+
+    #finalResults th:nth-child(4),
+    #finalResults td:nth-child(4) {
+      width: 12%;
+    }
+
+    #finalResults th:nth-child(5),
+    #finalResults td:nth-child(5) {
+      width: 15%;
+    }
+
+    #finalResults th:nth-child(6),
+    #finalResults td:nth-child(6) {
+      width: 8%;
+    }
+
+    #finalResults th:nth-child(7),
+    #finalResults td:nth-child(7) {
+      width: 13%;
+    }
+
+    .dup-warning {
+      background: #fff3cd;
+      color: #664d03;
+      padding: 8px;
+      border-radius: 6px;
+      margin: 8px auto;
+      max-width: 520px;
+      display: none;
+      text-align: center;
+    }
+
+    .small {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 999;
+    }
+
+    .modal {
+      background: #fff;
+      border-radius: 10px;
+      padding: 14px;
+      width: 420px;
+      max-width: 95%;
+      box-sizing: border-box;
+    }
+
+    .modal h4 {
+      margin: 0 0 8px;
+    }
+
+    .modal .modal-input {
+      width: 100%;
+      padding: 10px;
+      font-size: 20px;
+      text-align: center;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+
+    .numpad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .numpad button {
+      padding: 12px;
+      font-size: 18px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      background: #f3f3f3;
+      cursor: pointer;
+    }
+
+    .barcode-cell {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .barcode-thumb {
+      width: 140px;
+      height: 48px;
+      display: inline-block;
+    }
+
+    .cancelled-row td {
+      color: #888;
+      text-decoration: line-through;
+      background: #fafafa;
+    }
+
+    @media (max-width: 900px) {
+      .tables {
+        flex-direction: column;
+      }
+
+      .col {
+        width: 100%;
+      }
+
+      #reader {
+        width: 100%;
+      }
+
+      #searchBar {
+        width: 85%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <h2>صفحه التكويد</h2>
+
+  <div id="status" title="دبل كليك لرفع ملف Excel محلي">جارٍ محاولة تحميل ملف الإكسل...</div>
+
+  <!-- messages area -->
+  <div id="messagesPanel" aria-live="polite"></div>
+
+  <!-- persistent notice -->
+  <div id="persistentNotice">
+    <div class="notice">
+      <div id="persistentText">لديك منتجات محفوظة محليًا — ستظل محفوظة حتى تحذفها.</div>
+      <div><button id="dismissPersistent" class="btn ghost">إخفاء</button></div>
+    </div>
+  </div>
+
+  <div id="app">
+    <div class="searchRow" role="region" aria-label="شريط البحث">
+      <input id="searchBar" type="text" placeholder="اكتب الاسم أو الباركود أو وصف المنتج" aria-label="بحث">
+      <button id="searchBtn" class="btn primary">بحث</button>
+      <button id="clearBtn" class="btn ghost">حذف</button>
+      <button id="cameraBtn" class="btn camera">📷 QR</button>
+      <button id="scaleBtn" class="btn ghost">📶 كود الميزان</button>
+      <button id="adminBtn" class="btn ghost" style="margin-left:8px">وضع الأدمن</button>
+    </div>
+
+    <div class="dup-warning" id="dupWarning" role="alert"></div>
+
+    <div id="reader" aria-hidden="true"></div>
+
+    <div class="tables">
+      <div class="col" aria-label="نتائج البحث">
+        <h3>نتائج البحث</h3>
+        <div style="text-align:left; margin-bottom:6px;">
+          <button id="clearResultsBtn" style="display:none;" class="btn ghost">حذف الكل</button>
+        </div>
+        <table id="results" aria-live="polite">
+          <thead>
+            <tr>
+              <th>اسم المنتج</th>
+              <th>سعر</th>
+              <th>كود الميزان</th>
+              <th>QR</th>
+              <th>إجراء</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="col" aria-label="المنتجات المختارة">
+        <h3>المنتجات المختارة (<span id="selectedCount">0</span>)</h3>
+        <div style="text-align:left; margin-bottom:6px;">
+          <button id="clearAllBtn" class="btn ghost" style="display:none">حذف الكل (أدمن)</button>
+          <button id="showCancelledBtn" class="btn ghost" style="margin-left:8px;">إظهار الملغى</button>
+        </div>
+        <table id="finalResults" aria-live="polite">
+          <thead>
+            <tr>
+              <th>اسم المنتج</th>
+              <th>العدد</th>
+              <th>كود الميزان</th>
+              <th>Barcode</th>
+              <th>التاريخ</th>
+              <th>الحالة</th>
+              <th>إجراء</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div style="margin-top:8px; text-align:left;">
+          <button id="exportBtn" class="btn primary">تصدير إكسل</button>
+          <button id="showAllBarcodesBtn" class="btn primary" style="margin-left:8px;">عرض كل الباركودات</button>
+          <button id="printPdfBtn" class="btn primary" style="margin-left:8px;">طباعة PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- مودال التأكيد العام (بديل للـ alert/prompt/confirm) -->
+  <div class="dialog-overlay" id="dialogModal">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+      <h4 id="dialogTitle">عنوان</h4>
+      <div class="dialog-msg" id="dialogMsg"></div>
+      <input id="dialogInput" class="dialog-input" style="display:none;" />
+      <div class="dialog-actions" id="dialogActions">
+        <button id="dialogCancel" class="btn ghost">إلغاء</button>
+        <button id="dialogOk" class="btn primary">موافق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- مودال الاستلام (كما كان) -->
+  <div class="modal-overlay" id="receiveModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h4 id="modalTitle">استلام المنتج</h4>
+      <div id="modalName" style="text-align:center; font-weight:700; margin-bottom:8px"></div>
+      <input id="modalInput" class="modal-input" inputmode="decimal" placeholder="العدد أو الوزن (مثال: 2 أو 0.5)"
+        autocomplete="off" />
+      <div class="numpad" aria-hidden="false">
+        <button type="button" data-key="7">7</button>
+        <button type="button" data-key="8">8</button>
+        <button type="button" data-key="9">9</button>
+        <button type="button" data-key="4">4</button>
+        <button type="button" data-key="5">5</button>
+        <button type="button" data-key="6">6</button>
+        <button type="button" data-key="1">1</button>
+        <button type="button" data-key="2">2</button>
+        <button type="button" data-key="3">3</button>
+        <button type="button" id="modalBack">⌫</button>
+        <button type="button" data-key="0">0</button>
+        <button type="button" data-key=".">.</button>
+      </div>
+      <div class="actions" style="display:flex; gap:8px; justify-content:center; margin-top:12px">
+        <button class="btn ghost" id="modalCancel">إلغاء</button>
+        <button class="btn primary" id="modalConfirm">تم</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ملف رفع مخفي -->
+  <input id="fileInput" type="file" accept=".xlsx,.xls" style="display:none" />
+
+  <script>
+    /**************************************************************************
+     * مفاتيح التخزين المحلية
+     **************************************************************************/
+    const STORAGE_KEY_EXCEL = 'excel_rows_v2';
+    const STORAGE_KEY_FINAL = 'final_selection_v2';
+    const STORAGE_KEY_ADMIN_HASH = 'admin_hash_v2';
+    const STORAGE_KEY_ADMIN_SESSION = 'admin_mode_v2';
+
+    // أعمدة الإكسل: [0]=اسم, [1]=سعر, [2]=كود الميزان, [3]=QR/Barcode
+    const NAME_IDX = 0, PRICE_IDX = 1, CODE_IDX = 2, QR_IDX = 3;
+
+    // DOM
+    const statusEl = document.getElementById('status');
+    const dupWarningEl = document.getElementById('dupWarning');
+    const searchBar = document.getElementById('searchBar');
+    const searchBtn = document.getElementById('searchBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const cameraBtn = document.getElementById('cameraBtn');
+    const scaleBtn = document.getElementById('scaleBtn');
+    const reader = document.getElementById('reader');
+
+    const resultsTbody = document.querySelector('#results tbody');
+    const finalTbody = document.querySelector('#finalResults tbody');
+    const clearResultsBtn = document.getElementById('clearResultsBtn');
+    const clearAllBtnEl = document.getElementById('clearAllBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const showCancelledBtn = document.getElementById('showCancelledBtn');
+
+    const receiveModalOverlay = document.getElementById('receiveModal');
+    const modalInput = document.getElementById('modalInput');
+    const modalName = document.getElementById('modalName');
+    const modalBack = document.getElementById('modalBack');
+    const modalCancel = document.getElementById('modalCancel');
+    const modalConfirm = document.getElementById('modalConfirm');
+
+    const adminBtn = document.getElementById('adminBtn');
+    const fileInput = document.getElementById('fileInput');
+
+    // dialog elements
+    const dialogModal = document.getElementById('dialogModal');
+    const dialogTitle = document.getElementById('dialogTitle');
+    const dialogMsg = document.getElementById('dialogMsg');
+    const dialogInput = document.getElementById('dialogInput');
+    const dialogOk = document.getElementById('dialogOk');
+    const dialogCancel = document.getElementById('dialogCancel');
+
+    const messagesPanel = document.getElementById('messagesPanel');
+    const persistentNotice = document.getElementById('persistentNotice');
+    const dismissPersistent = document.getElementById('dismissPersistent');
+
+    // State
+    let excelData = [];
+    let startIndex = 1;
+    let finalMap = new Map(); // uid -> { uid, rowArray, qty, createdAt, status }
+    let scannerRunning = false;
+    let qrScanner = null;
+    let lastScan = { text: null, time: 0, tol: 800 };
+    let scaleFilterActive = false;
+    let modalCurrentSourceIndex = null;
+    let modalEditingUid = null;
+    let modalOpen = false;
+    let showCancelled = false;
+
+    const excelCandidates = [
+      "244.xlsx",
+      "244.xls",
+      "products.xlsx",
+      "products.xls",
+      "product.xlsx",
+      "product.xls",
+      "data.xlsx",
+      "data.xls",
+      "db.xlsx",
+      "db.xls",
+      "items.xlsx",
+      "items.xls",
+      "inventory.xlsx",
+      "inventory.xls",
+      "عندك.xlsx",
+      "عندك.xls",
+      "products_list.xlsx",
+      "products-list.xlsx"
+    ];
+
+    /**************************************************************************
+     * مساعدة الرسائل (بديل للـ alert/prompt/confirm)
+     **************************************************************************/
+    function createToastElement(type, text, options = {}) {
+      const el = document.createElement('div');
+      el.className = 'toast ' + (type || 'info');
+      const msg = document.createElement('div'); msg.className = 'msg'; msg.textContent = text;
+      const closeBtn = document.createElement('button'); closeBtn.className = 'closeBtn'; closeBtn.innerHTML = '✕';
+      closeBtn.addEventListener('click', () => { el.remove(); });
+      el.appendChild(msg);
+      el.appendChild(closeBtn);
+      return el;
+    }
+
+    function showToast(type, text, { autoHide = true, timeout = 4500 } = {}) {
+      const el = createToastElement(type, text);
+      messagesPanel.appendChild(el);
+      if (autoHide) {
+        setTimeout(() => { try { el.remove(); } catch (e) { } }, timeout);
+      }
+      return el;
+    }
+
+    // Generic dialog that returns Promise
+    function showDialog({ title = '', message = '', type = 'alert', inputType = 'text', placeholder = '' } = {}) {
+      return new Promise((resolve) => {
+        dialogTitle.textContent = title || '';
+        dialogMsg.textContent = message || '';
+        dialogInput.value = '';
+        dialogInput.type = inputType || 'text';
+        dialogInput.placeholder = placeholder || '';
+
+        // configure UI
+        if (type === 'prompt') dialogInput.style.display = '';
+        else dialogInput.style.display = 'none';
+
+        dialogOk.style.display = '';
+        dialogCancel.style.display = '';
+
+        // set text for buttons according to type
+        dialogOk.textContent = (type === 'confirm') ? 'نعم' : 'موافق';
+        dialogCancel.textContent = (type === 'alert') ? 'إغلاق' : 'إلغاء';
+
+        // show
+        dialogModal.style.display = 'flex';
+        try { dialogInput.focus(); } catch (e) { }
+
+        function cleanup() {
+          dialogOk.removeEventListener('click', onOk);
+          dialogCancel.removeEventListener('click', onCancel);
+        }
+
+        function onOk() {
+          const val = (dialogInput.style.display !== 'none') ? dialogInput.value : true;
+          cleanup(); dialogModal.style.display = 'none'; resolve(type === 'prompt' ? val : true);
+        }
+        function onCancel() {
+          cleanup(); dialogModal.style.display = 'none'; resolve(type === 'prompt' ? null : false);
+        }
+
+        dialogOk.addEventListener('click', onOk);
+        dialogCancel.addEventListener('click', onCancel);
+
+        // keyboard handling
+        function onKey(e) {
+          if (e.key === 'Enter') { onOk(); }
+          if (e.key === 'Escape') { onCancel(); }
+        }
+        dialogModal.addEventListener('keydown', onKey);
+        // ensure focus trap
+        setTimeout(() => { try { dialogModal.focus(); } catch (e) { } }, 50);
+      });
+    }
+
+    async function showConfirm(message) { return await showDialog({ title: 'تأكيد', message, type: 'confirm' }); }
+    async function showPrompt(message, { placeholder = '', inputType = 'text' } = {}) { return await showDialog({ title: '', message, type: 'prompt', placeholder, inputType }); }
+    async function showAlert(message) { return await showDialog({ title: '', message, type: 'alert' }); }
+
+    /**************************************************************************
+     * مساعدات صغيرة
+     **************************************************************************/
+    function setStatus(text, active = true) {
+      statusEl.textContent = text;
+      statusEl.style.background = active ? 'var(--accent)' : 'var(--danger)';
+    }
+    function escapeHtml(s) { return String(s || '').replace(/[&<>"]|'/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+    function getCell(row, idx) { if (!row) return ""; const v = row[idx]; return (v === undefined || v === null) ? "" : String(v); }
+    function uidFromRow(row) { const qr = getCell(row, QR_IDX).trim(); const code = getCell(row, CODE_IDX).trim(); const name = getCell(row, NAME_IDX).trim(); if (qr) return "QR::" + qr; if (code) return "CODE::" + code; return "NAME::" + name; }
+
+    /**************************************************************************
+     * تحميل تلقائي لملفات Excel مرشحة من الريبو (GitHub Pages)
+     **************************************************************************/
+    async function tryAutoLoadExcel() {
+      // 1) If hosted on GitHub Pages, try GitHub API to list files in repo root
+      try {
+        const host = location.hostname;
+        if (host.endsWith('.github.io')) {
+          const owner = host.split('.')[0];
+          const pathParts = location.pathname.split('/').filter(Boolean);
+          let repo, apiPath = '';
+          if (pathParts.length === 0) {
+            repo = owner + '.github.io';
+          } else {
+            repo = pathParts[0];
+            apiPath = pathParts.slice(1).join('/');
+          }
+          const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${apiPath}`;
+          const res = await fetch(apiUrl).catch(() => null);
+          if (res && res.ok) {
+            const items = await res.json();
+            if (Array.isArray(items)) {
+              const excels = items.filter(it => it && it.name && (it.name.toLowerCase().endsWith('.xlsx') || it.name.toLowerCase().endsWith('.xls')));
+              if (excels.length > 0) {
+                for (const file of excels) {
+                  if (file && file.download_url) {
+                    const ok = await tryFetchAndParse(file.download_url, file.name);
+                    if (ok) return true;
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (e) { /* ignore */ }
+
+      // 2) Try common candidate filenames (fallback)
+      for (const name of excelCandidates) {
+        try {
+          const ok = await tryFetchAndParse(name, name);
+          if (ok) return true;
+        } catch (e) { }
+      }
+
+      // 3) Try to find <a> links on page that point to .xlsx/.xls
+      try {
+        const anchors = Array.from(document.querySelectorAll('a[href]'));
+        for (const a of anchors) {
+          const href = a.getAttribute('href');
+          if (href && /\.(xlsx|xls)$/i.test(href)) {
+            const url = new URL(href, window.location.href).href;
+            const ok = await tryFetchAndParse(url, url);
+            if (ok) return true;
+          }
+        }
+      } catch (e) { }
+
+      // 4) fallback to localStorage snapshot if exists
+      try {
+        const persisted = localStorage.getItem(STORAGE_KEY_EXCEL);
+        if (persisted) {
+          excelData = JSON.parse(persisted);
+          startIndex = 1;
+          setStatus('تم تحميل بيانات الإكسل من الذاكرة المحلية', true);
+          showToast('info', 'تم تحميل بيانات الإكسل من الذاكرة المحلية');
+          return true;
+        }
+      } catch (e) { }
+
+      setStatus('لم يعثر على ملف إكسل تلقائيًا — دبل كليك هنا لرفع ملف إكسل محلي.', false);
+      return false;
+    }
+
+    async function tryFetchAndParse(url, sourceName) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('not found');
+        const buf = await res.arrayBuffer();
+        parseWorkbook(buf, sourceName);
+        showToast('success', 'تم تحميل: ' + sourceName);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function parseWorkbook(arrayBuffer, sourceName) {
+      try {
+        const wb = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+        const first = wb.SheetNames[0];
+        excelData = XLSX.utils.sheet_to_json(wb.Sheets[first], { header: 1 });
+        if (excelData.length > 0) {
+          const text = (excelData[0] || []).join(" ");
+          startIndex = ((/[^\s]/.test(text) && /[a-zA-Z\u0600-\u06FF]/.test(text)) ? 1 : 0);
+        } else startIndex = 0;
+        try { localStorage.setItem(STORAGE_KEY_EXCEL, JSON.stringify(excelData)); } catch (e) { }
+        setStatus("ملف فعال: " + (sourceName || first), true);
+      } catch (err) {
+        console.error(err);
+        setStatus("فشل قراءة الإكسل", false);
+        showToast('error', 'فشل قراءة الإكسل');
+        excelData = [];
+      }
+    }
+
+    statusEl.addEventListener('dblclick', () => {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        parseWorkbook(evt.target.result, file.name);
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    // ==========================================
+    // Search Logic
+    // ==========================================
+    function doSearch() {
+      const term = searchBar.value.trim().toLowerCase();
+      resultsTbody.innerHTML = '';
+      if (!term && !scaleFilterActive) {
+        clearResultsBtn.style.display = 'none';
+        return;
+      }
+
+      const results = [];
+      for (let i = startIndex; i < excelData.length; i++) {
+        const row = excelData[i];
+        if (!row || row.length === 0) continue;
+        const name = getCell(row, NAME_IDX).toLowerCase();
+        const code = getCell(row, CODE_IDX).toLowerCase();
+        const qr = getCell(row, QR_IDX).toLowerCase();
+
+        let match = false;
+        if (scaleFilterActive) {
+          if (code && code.includes(term)) match = true;
+        } else {
+          if (name.includes(term) || code.includes(term) || qr.includes(term)) match = true;
+        }
+
+        if (match) {
+          results.push({ index: i, row });
+          if (results.length > 50) break; // Limit
+        }
+      }
+
+      if (results.length === 0) {
+        resultsTbody.innerHTML = `<tr><td colspan="5" style="padding:15px">
+            لا توجد نتائج. <br><br>
+            <button class="btn warn" onclick="addNewProductModal()">إضافة كمنتج جديد</button>
+        </td></tr>`;
+        clearResultsBtn.style.display = 'inline-block';
+        return;
+      }
+
+      results.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${escapeHtml(getCell(item.row, NAME_IDX))}</td>
+          <td>${escapeHtml(getCell(item.row, PRICE_IDX))}</td>
+          <td>${escapeHtml(getCell(item.row, CODE_IDX))}</td>
+          <td>${escapeHtml(getCell(item.row, QR_IDX))}</td>
+          <td><button class="btn primary" onclick="openReceiveModal(${item.index})">استلام</button></td>
+        `;
+        resultsTbody.appendChild(tr);
+      });
+      clearResultsBtn.style.display = 'inline-block';
+    }
+
+    function checkAutoReceive(term) {
+      if (!term) return false;
+      const matchIndex = excelData.findIndex((row, idx) => {
+        if (idx < startIndex) return false;
+        return getCell(row, QR_IDX).toLowerCase() === term;
+      });
+
+      if (matchIndex !== -1) {
+        // Open the receive modal to let the user input the quantity
+        openReceiveModal(matchIndex);
+        searchBar.value = '';
+        doSearch(); // Clear search results
+        return true;
+      }
+      return false;
+    }
+
+    searchBtn.addEventListener('click', () => {
+      const term = searchBar.value.trim().toLowerCase();
+      if (!checkAutoReceive(term)) {
+        doSearch();
+      }
+    });
+
+    searchBar.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') {
+        const term = searchBar.value.trim().toLowerCase();
+        if (!checkAutoReceive(term)) {
+          doSearch();
+        }
+      }
+    });
+
+    // Auto receive instantly if a complete barcode is entered (pasted or scanned)
+    searchBar.addEventListener('input', (e) => {
+      const term = searchBar.value.trim().toLowerCase();
+      // Only auto-trigger without Enter if it's long enough to be a barcode (e.g. 5+ chars)
+      if (term.length >= 5) {
+        checkAutoReceive(term);
+      }
+    });
+
+    clearBtn.addEventListener('click', () => {
+      searchBar.value = '';
+      scaleFilterActive = false;
+      scaleBtn.classList.remove('primary');
+      scaleBtn.classList.add('ghost');
+      resultsTbody.innerHTML = '';
+      clearResultsBtn.style.display = 'none';
+      searchBar.focus();
+    });
+
+    clearResultsBtn.addEventListener('click', () => {
+      resultsTbody.innerHTML = '';
+      clearResultsBtn.style.display = 'none';
+    });
+
+    scaleBtn.addEventListener('click', () => {
+      scaleFilterActive = !scaleFilterActive;
+      if (scaleFilterActive) {
+        scaleBtn.classList.remove('ghost');
+        scaleBtn.classList.add('primary');
+      } else {
+        scaleBtn.classList.remove('primary');
+        scaleBtn.classList.add('ghost');
+      }
+      doSearch();
+    });
+
+    // ==========================================
+    // Add New Product Dynamically
+    // ==========================================
+    window.addNewProductModal = async function () {
+      const barcode = searchBar.value.trim();
+      const name = await showPrompt('أدخل اسم المنتج الجديد:');
+      if (!name) return;
+      const price = await showPrompt('أدخل السعر (اختياري):');
+      const code = await showPrompt('أدخل كود الميزان (اختياري):');
+
+      const newRow = [];
+      newRow[NAME_IDX] = name;
+      newRow[PRICE_IDX] = price || '';
+      newRow[CODE_IDX] = code || '';
+      newRow[QR_IDX] = barcode;
+
+      excelData.push(newRow);
+      try { localStorage.setItem(STORAGE_KEY_EXCEL, JSON.stringify(excelData)); } catch (e) { }
+
+      showToast('success', 'تم إضافة المنتج الجديد إلى قاعدة البيانات المحلية');
+      doSearch();
+    };
+
+    // ==========================================
+    // Receive Modal Logic
+    // ==========================================
+    window.openReceiveModal = function (sourceIndex, editUid = null) {
+      modalCurrentSourceIndex = sourceIndex;
+      modalEditingUid = editUid;
+      const row = sourceIndex !== null ? excelData[sourceIndex] : finalMap.get(editUid).rowArray;
+      const name = getCell(row, NAME_IDX);
+      modalName.textContent = name;
+      modalInput.value = '';
+      if (editUid) {
+        const existing = finalMap.get(editUid);
+        modalInput.value = existing.qty;
+      }
+      receiveModalOverlay.style.display = 'flex';
+      modalOpen = true;
+      modalInput.focus();
+    };
+
+    modalCancel.addEventListener('click', () => {
+      receiveModalOverlay.style.display = 'none';
+      modalOpen = false;
+    });
+
+    modalConfirm.addEventListener('click', () => {
+      const qty = parseFloat(modalInput.value);
+      if (isNaN(qty) || qty <= 0) {
+        showToast('error', 'يرجى إدخال كمية صحيحة');
+        return;
+      }
+      const row = modalCurrentSourceIndex !== null ? excelData[modalCurrentSourceIndex] : finalMap.get(modalEditingUid).rowArray;
+      const uid = uidFromRow(row);
+
+      if (modalEditingUid) {
+        const item = finalMap.get(modalEditingUid);
+        item.qty = qty;
+        finalMap.set(modalEditingUid, item);
+      } else {
+        if (finalMap.has(uid) && finalMap.get(uid).status !== 'cancelled') {
+          const item = finalMap.get(uid);
+          item.qty += qty;
+          finalMap.set(uid, item);
+        } else {
+          finalMap.set(uid, {
+            uid,
+            rowArray: row,
+            qty: qty,
+            createdAt: new Date().toISOString(),
+            status: 'active'
+          });
+        }
+      }
+      saveFinalData();
+      renderFinalResults();
+      receiveModalOverlay.style.display = 'none';
+      modalOpen = false;
+      showToast('success', 'تم استلام المنتج بنجاح');
+      searchBar.value = '';
+      searchBar.focus();
+    });
+
+    // Support pressing Enter key inside the receive modal input
+    modalInput.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') {
+        modalConfirm.click();
+      }
+    });
+
+    document.querySelectorAll('.numpad button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.id === 'modalBack') {
+          modalInput.value = modalInput.value.slice(0, -1);
+        } else {
+          modalInput.value += btn.dataset.key;
+        }
+      });
+    });
+
+    // ==========================================
+    // Final Selected Products Logic
+    // ==========================================
+    function renderFinalResults() {
+      finalTbody.innerHTML = '';
+      let count = 0;
+      let items = Array.from(finalMap.values());
+      items.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      items.forEach(item => {
+        if (item.status === 'cancelled' && !showCancelled) return;
+        count++;
+        const tr = document.createElement('tr');
+        if (item.status === 'cancelled') tr.classList.add('cancelled-row');
+
+        const actionHtml = item.status === 'cancelled'
+          ? `<button class="btn ghost" onclick="restoreItem('${item.uid}')">استرجاع</button>`
+          : `<button class="btn warn" onclick="openReceiveModal(null, '${item.uid}')">تعديل</button>
+             <button class="btn danger" onclick="cancelItem('${item.uid}')">إلغاء</button>`;
+
+        const codeText = escapeHtml(getCell(item.rowArray, QR_IDX) || getCell(item.rowArray, CODE_IDX));
+        const svgId = "barcode_" + item.uid.replace(/[^a-zA-Z0-9]/g, "");
+
+        tr.innerHTML = `
+          <td>${escapeHtml(getCell(item.rowArray, NAME_IDX))}</td>
+          <td>${item.qty}</td>
+          <td>${escapeHtml(getCell(item.rowArray, CODE_IDX))}</td>
+          <td class="barcode-cell">
+             ${codeText ? `<svg id="${svgId}" class="barcode-thumb"></svg>` : ''}
+          </td>
+          <td class="small">${new Date(item.createdAt).toLocaleString('ar-EG')}</td>
+          <td>${item.status === 'active' ? 'مفعل' : 'ملغى'}</td>
+          <td>${actionHtml}</td>
+        `;
+        finalTbody.appendChild(tr);
+
+        if (codeText) {
+          setTimeout(() => {
+            try {
+              JsBarcode("#" + svgId, codeText, { width: 1.5, height: 40, displayValue: true, fontSize: 12, margin: 0 });
+            } catch (e) { }
+          }, 50);
+        }
+      });
+      document.getElementById('selectedCount').textContent = count;
+      updatePersistentNotice();
+    }
+
+    window.cancelItem = function (uid) {
+      if (finalMap.has(uid)) {
+        finalMap.get(uid).status = 'cancelled';
+        saveFinalData();
+        renderFinalResults();
+      }
+    };
+
+    window.restoreItem = function (uid) {
+      if (finalMap.has(uid)) {
+        finalMap.get(uid).status = 'active';
+        saveFinalData();
+        renderFinalResults();
+      }
+    };
+
+    showCancelledBtn.addEventListener('click', () => {
+      showCancelled = !showCancelled;
+      showCancelledBtn.textContent = showCancelled ? 'إخفاء الملغى' : 'إظهار الملغى';
+      renderFinalResults();
+    });
+
+    function saveFinalData() {
+      try { localStorage.setItem(STORAGE_KEY_FINAL, JSON.stringify(Array.from(finalMap.entries()))); } catch (e) { }
+      updatePersistentNotice();
+    }
+
+    function loadFinalData() {
+      try {
+        const data = localStorage.getItem(STORAGE_KEY_FINAL);
+        if (data) {
+          finalMap = new Map(JSON.parse(data));
+        }
+      } catch (e) { }
+      renderFinalResults();
+    }
+
+    function updatePersistentNotice() {
+      const activeItems = Array.from(finalMap.values()).filter(x => x.status === 'active');
+      if (activeItems.length > 0) {
+        persistentNotice.style.display = 'block';
+      } else {
+        persistentNotice.style.display = 'none';
+      }
+    }
+
+    dismissPersistent.addEventListener('click', () => {
+      persistentNotice.style.display = 'none';
+    });
+
+    // ==========================================
+    // Export & Print
+    // ==========================================
+    exportBtn.addEventListener('click', () => {
+      const activeItems = Array.from(finalMap.values()).filter(x => x.status === 'active');
+      if (activeItems.length === 0) {
+        showToast('info', 'لا يوجد منتجات لتصديرها');
+        return;
+      }
+      const wsData = [
+        ['اسم المنتج', 'الكمية', 'سعر', 'كود الميزان', 'Barcode/QR', 'التاريخ']
+      ];
+      activeItems.forEach(item => {
+        wsData.push([
+          getCell(item.rowArray, NAME_IDX),
+          item.qty,
+          getCell(item.rowArray, PRICE_IDX),
+          getCell(item.rowArray, CODE_IDX),
+          getCell(item.rowArray, QR_IDX),
+          new Date(item.createdAt).toLocaleString('ar-EG')
+        ]);
+      });
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "المنتجات المستلمة");
+      XLSX.writeFile(wb, "Selected_Products.xlsx");
+    });
+
+    printPdfBtn.addEventListener('click', () => {
+      window.print();
+    });
+
+    document.getElementById('showAllBarcodesBtn').addEventListener('click', () => {
+      showToast('info', 'الباركودات ظاهرة بالفعل في الجدول إذا كانت متوفرة.');
+    });
+
+    // ==========================================
+    // QR Scanner
+    // ==========================================
+    cameraBtn.addEventListener('click', async () => {
+      if (scannerRunning) {
+        stopScanner();
+      } else {
+        startScanner();
+      }
+    });
+
+    async function startScanner() {
+      reader.style.display = 'block';
+      if (!qrScanner) qrScanner = new Html5Qrcode("reader");
+      try {
+        await qrScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess);
+        scannerRunning = true;
+        cameraBtn.textContent = 'إيقاف 📷';
+      } catch (e) {
+        showToast('error', 'تعذر تشغيل الكاميرا. تأكد من الإذن.');
+        reader.style.display = 'none';
+      }
+    }
+
+    function stopScanner() {
+      if (qrScanner && scannerRunning) {
+        qrScanner.stop().then(() => {
+          qrScanner.clear();
+          scannerRunning = false;
+          cameraBtn.textContent = '📷 QR';
+          reader.style.display = 'none';
+        }).catch(() => {
+          scannerRunning = false;
+          cameraBtn.textContent = '📷 QR';
+          reader.style.display = 'none';
+        });
+      }
+    }
+
+    function onScanSuccess(decodedText) {
+      const now = Date.now();
+      if (lastScan.text === decodedText && (now - lastScan.time) < lastScan.tol) return;
+      lastScan = { text: decodedText, time: now, tol: 800 };
+
+      searchBar.value = decodedText;
+      stopScanner();
+      doSearch();
+
+      const resButtons = resultsTbody.querySelectorAll('button.primary');
+      if (resButtons.length > 0) {
+        resButtons[0].click();
+      }
+    }
+
+    // ==========================================
+    // Admin Functions
+    // ==========================================
+    adminBtn.addEventListener('click', async () => {
+      const pwd = await showPrompt('أدخل كلمة مرور الأدمن:', { inputType: 'password' });
+      // Default password logic
+      if (pwd === '1234' || pwd === 'admin') {
+        clearAllBtnEl.style.display = 'inline-block';
+        showToast('success', 'تم تفعيل وضع الأدمن');
+      } else if (pwd !== null) {
+        showToast('error', 'كلمة المرور خاطئة');
+      }
+    });
+
+    clearAllBtnEl.addEventListener('click', async () => {
+      const ok = await showConfirm('هل أنت متأكد من حذف جميع المنتجات المختارة نهائياً؟');
+      if (ok) {
+        finalMap.clear();
+        saveFinalData();
+        renderFinalResults();
+        showToast('success', 'تم حذف جميع المنتجات المحددة');
+      }
+    });
+
+    // ==========================================
+    // Initialization
+    // ==========================================
+    window.addEventListener('DOMContentLoaded', async () => {
+      loadFinalData();
+      await tryAutoLoadExcel();
+    });
+
+  </script>
+</body>
+
+</html>
